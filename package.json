@@ -1,6 +1,6 @@
 {
   "name": "webopenssl-advanced",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "type": "module",
   "description": "A JavaScript library emulating OpenSSL subset for web environments using Web Crypto API",
   "main": "lib/webopenssl.js",

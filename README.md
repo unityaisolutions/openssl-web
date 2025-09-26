@@ -83,10 +83,10 @@ Or use via CDN for browser-only:
 ### Module Usage (ESM/CommonJS)
 
 ```javascript
-import webopenssl from 'webopenssl';
+import webopenssl from 'webopenssl-advanced';
 
 // Or CommonJS
-const webopenssl = require('webopenssl');
+const webopenssl = require('webopenssl-advanced');
 
 // Random generation
 const randomKey = await webopenssl.rand({ base64: true, length: 32 });
@@ -301,16 +301,16 @@ The library ships in multiple formats for different environments:
 
 ```html
 <!-- Unpkg -->
-<script src="https://unpkg.com/webopenssl@1.0.0/lib/webopenssl.min.js"></script>
+<script src="https://unpkg.com/webopenssl-advanced@1.0.0/lib/webopenssl.min.js"></script>
 
 <!-- jsDelivr -->
-<script src="https://cdn.jsdelivr.net/npm/webopenssl@1.0.0/lib/webopenssl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webopenssl-advanced@1.0.0/lib/webopenssl.min.js"></script>
 ```
 
 ### NPM Package Structure
 
 ```
-webopenssl/
+webopenssl-advanced/
 ├── lib/
 │   ├── webopenssl.min.js     # Production UMD (minified)
 │   ├── webopenssl.js         # Development UMD
@@ -399,7 +399,7 @@ The demo showcases all four commands with real-time validation and Web Crypto st
 Full TypeScript definitions included:
 
 ```typescript
-import webopenssl from 'webopenssl';
+import webopenssl from 'webopenssl-advanced';
 
 interface EncOptions {
   algorithm?: 'AES-256-CBC' | 'AES-128-CBC' | 'AES-256-GCM';
@@ -440,8 +440,8 @@ const result: Promise<{
 ### Development Setup
 
 ```bash
-git clone https://github.com/yourusername/webopenssl.git
-cd webopenssl
+git clone https://github.com/unityaisolutions/openssl-web.git
+cd openssl-web
 npm install
 npm run dev  # Watch mode for development
 npm start    # Build and serve demo
@@ -449,11 +449,11 @@ npm start    # Build and serve demo
 
 ## License
 
-This project is [MIT](LICENSE) licensed. See the [LICENSE](LICENSE) file for details.
+This project is [Apache 2.0](LICENSE) licensed. See the [LICENSE](LICENSE) file for details.
 
 ## Security
 
-For security issues, please contact security@webopenssl.example instead of opening GitHub issues. We take security seriously and will respond within 72 hours.
+For security issues, please contact unityaisolutions@outlook.com instead of opening GitHub issues. We take security seriously and will respond within 72 hours. If you'd like, enable encryption in Outlook for extra security.
 
 ### Responsible Disclosure
 
@@ -467,7 +467,6 @@ If you discover a security vulnerability:
 - [Documentation](README.md)
 - [Demo](https://webopenssl-demo.vercel.app/)
 - [API Reference](#api-reference)
-- Stack Overflow: Search "webopenssl" tag
 
 ---
 
