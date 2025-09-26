@@ -384,7 +384,7 @@ export default {
 
 ## Demo
 
-Try the interactive demo at [https://webopenssl-demo.vercel.app/](https://webopenssl-demo.vercel.app/) after running:
+Try the hosted interactive demo at [https://webopenssl-demo.vercel.app/](https://webopenssl-demo.vercel.app/) or locally [localhost:3000](localhost:3000) after running:
 
 ```bash
 npm start
