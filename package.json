@@ -1,0 +1,39 @@
+{
+  "name": "webopenssl-advanced",
+  "version": "1.0.1",
+  "type": "module",
+  "description": "A JavaScript library emulating OpenSSL subset for web environments using Web Crypto API",
+  "main": "lib/webopenssl.js",
+  "module": "lib/webopenssl.mjs",
+  "types": "lib/webopenssl.d.ts",
+  "files": [
+    "lib/",
+    "dist/"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c --watch",
+    "serve": "npx serve -s demo -p 3000",
+    "start": "npm run build && npm run serve",
+    "test": "jest"
+  },
+  "keywords": ["crypto", "openssl", "webcrypto", "wasm"],
+  "author": "Alex Scott",
+  "license": "MIT",
+  "dependencies": {
+    "asn1.js": "^5.4.1",
+    "node-forge": "^1.3.1",
+    "crypto-js": "^4.2.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.13.0"
+  },
+  "browserslist": [
+    "> 0.5%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

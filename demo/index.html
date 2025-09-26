@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self';">
+    <title>WebOpenSSL Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .section {
+            background: white;
+            margin: 20px 0;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .section h2 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .output {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .loading {
+            color: #667eea;
+            font-style: italic;
+        }
+        .command-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 5px 5px 0 0;
+            overflow: hidden;
+        }
+        .tab-button {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        .tab-button.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        .tab-button:hover {
+            background: #e9ecef;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .crypto-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .crypto-available {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .crypto-unavailable {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        @media (max-width: 768px) {
+            .command-tabs {
+                flex-direction: column;
+            }
+            body {
+                padding: 10px;
+            }
+            .section {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ WebOpenSSL Demo</h1>
+        <p>JavaScript library emulating OpenSSL functionality using Web Crypto API</p>
+    </div>
+
+    <div id="cryptoStatus" class="crypto-status"></div>
+
+    <div class="command-tabs">
+        <button class="tab-button active" onclick="showTab('rand')">🔐 Random (rand)</button>
+        <button class="tab-button" onclick="showTab('dgst')">🔑 Hash (dgst)</button>
+        <button class="tab-button" onclick="showTab('enc')">🔒 Encrypt (enc)</button>
+        <button class="tab-button" onclick="showTab('req')">📜 CSR (req)</button>
+    </div>
+
+    <div id="rand-tab" class="tab-content active">
+        <div class="section">
+            <h2>Generate Secure Random Data</h2>
+            <div class="form-group">
+                <label for="rand-length">Length (bytes):</label>
+                <input type="number" id="rand-length" value="32" min="1" max="1024">
+            </div>
+            <div class="form-group">
+                <label>Output Format:</label>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <label><input type="radio" name="rand-format" value="base64" checked> Base64</label>
+                    <label><input type="radio" name="rand-format" value="hex"> Hex</label>
+                    <label><input type="radio" name="rand-format" value="raw"> Raw (bytes)</label>
+                </div>
+            </div>
+            <button onclick="generateRandom()">Generate Random Data</button>
+            <div id="rand-output" class="output"></div>
+        </div>
+    </div>
+
+    <div id="dgst-tab" class="tab-content">
+        <div class="section">
+            <h2>Compute Message Digest (Hash)</h2>
+            <div class="form-group">
+                <label for="dgst-algorithm">Algorithm:</label>
+                <select id="dgst-algorithm">
+                    <option value="SHA-256">SHA-256</option>
+                    <option value="SHA-512">SHA-512</option>
+                    <option value="SHA-1">SHA-1</option>
+                    <option value="MD5">MD5</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="dgst-input">Input Data:</label>
+                <textarea id="dgst-input" rows="3" placeholder="Enter text to hash or paste binary data">Hello, WebOpenSSL!</textarea>
+            </div>
+            <div class="form-group">
+                <label>Output Format:</label>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <label><input type="radio" name="dgst-format" value="hex" checked> Hex</label>
+                    <label><input type="radio" name="dgst-format" value="base64"> Base64</label>
+                </div>
+            </div>
+            <button onclick="computeHash()">Compute Hash</button>
+            <div id="dgst-output" class="output"></div>
+        </div>
+    </div>
+
+    <div id="enc-tab" class="tab-content">
+        <div class="section">
+            <h2>Symmetric Encryption/Decryption</h2>
+            <div class="form-group">
+                <label>Mode:</label>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <label><input type="radio" name="enc-mode" value="encrypt" checked onclick="toggleEncMode()"> Encrypt</label>
+                    <label><input type="radio" name="enc-mode" value="decrypt" onclick="toggleEncMode()"> Decrypt</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="enc-algorithm">Algorithm:</label>
+                <select id="enc-algorithm">
+                    <option value="AES-256-CBC">AES-256-CBC</option>
+                    <option value="AES-128-CBC">AES-128-CBC</option>
+                    <option value="AES-256-GCM">AES-256-GCM</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="enc-password">Password:</label>
+                <input type="password" id="enc-password" placeholder="Enter encryption/decryption password">
+            </div>
+            <div class="form-group" id="enc-input-group">
+                <label for="enc-input" id="enc-input-label">Data to Encrypt:</label>
+                <textarea id="enc-input" rows="3" placeholder="Enter text to encrypt">Secret message for WebOpenSSL demo</textarea>
+            </div>
+            <div class="form-group" id="enc-iv-group" style="display: none;">
+                <label for="enc-iv">IV (for decrypt):</label>
+                <input type="text" id="enc-iv" placeholder="Paste IV from encryption result">
+            </div>
+            <div class="form-group" id="enc-salt-group" style="display: none;">
+                <label for="enc-salt">Salt (for decrypt):</label>
+                <input type="text" id="enc-salt" placeholder="Paste salt from encryption result">
+            </div>
+            <div class="form-group">
+                <label>Output Format:</label>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <label><input type="radio" name="enc-format" value="base64" checked> Base64</label>
+                    <label><input type="radio" name="enc-format" value="hex"> Hex</label>
+                </div>
+            </div>
+            <button onclick="performEncryption()">Execute</button>
+            <div id="enc-output" class="output"></div>
+        </div>
+    </div>
+
+    <div id="req-tab" class="tab-content">
+        <div class="section">
+            <h2>Certificate Signing Request (CSR) Generation</h2>
+            <div class="form-group">
+                <label for="req-subject">Subject DN:</label>
+                <input type="text" id="req-subject" value="/CN=localhost/O=WebOpenSSL Demo/C=US" placeholder="e.g., /CN=example.com/O=Example">
+            </div>
+            <div class="form-group">
+                <label for="req-keysize">Key Size:</label>
+                <select id="req-keysize">
+                    <option value="1024">1024 bits (RSA)</option>
+                    <option value="2048" selected>2048 bits (RSA)</option>
+                    <option value="4096">4096 bits (RSA)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="req-hash">Signature Hash:</label>
+                <select id="req-hash">
+                    <option value="sha256" selected>SHA-256</option>
+                    <option value="sha1">SHA-1</option>
+                    <option value="sha512">SHA-512</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="req-private-key" checked> Include Private Key
+                </label>
+            </div>
+            <button onclick="generateCSR()">Generate CSR</button>
+            <div id="req-output" class="output"></div>
+        </div>
+        <div class="section">
+            <h2>Parse CSR</h2>
+            <div class="form-group">
+                <label for="parse-csr">CSR (PEM or Base64):</label>
+                <textarea id="parse-csr" rows="6" placeholder="Paste CSR PEM here..."></textarea>
+            </div>
+            <button onclick="parseCSR()">Parse CSR</button>
+            <div id="parse-output" class="output"></div>
+        </div>
+    </div>
+
+    <!-- Load the built library -->
+    <script src="../lib/webopenssl.min.js" onload="console.log('WebOpenSSL library loaded successfully'); if (typeof checkCryptoAvailability === 'function') checkCryptoAvailability();" onerror="console.error('Failed to load WebOpenSSL library');"></script>
+
+    <script>
+        console.log('Inline script starting - page loaded');
+        
+        // Check Web Crypto availability
+        function checkCryptoAvailability() {
+            console.log('Checking Web Crypto availability...');
+            console.log('webopenssl defined?', typeof webopenssl !== 'undefined');
+            if (typeof webopenssl === 'undefined') {
+                console.error('webopenssl is not defined - library may not have loaded yet');
+                document.getElementById('cryptoStatus').textContent = '❌ Library failed to load';
+                document.getElementById('cryptoStatus').className = 'crypto-status crypto-unavailable';
+                return;
+            }
+            const status = document.getElementById('cryptoStatus');
+            const available = webopenssl.isWebCryptoAvailable();
+            console.log('Web Crypto available:', available);
+            status.textContent = available ?
+                '🟢 Web Crypto API Available (Secure Mode)' :
+                '🔴 Web Crypto Unavailable (Fallback Mode)';
+            status.className = `crypto-status ${available ? 'crypto-available' : 'crypto-unavailable'}`;
+        }
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Random generation
+        async function generateRandom() {
+            const length = parseInt(document.getElementById('rand-length').value);
+            const format = document.querySelector('input[name="rand-format"]:checked').value;
+            const output = document.getElementById('rand-output');
+            
+            output.className = 'output loading';
+            output.textContent = 'Generating secure random data...';
+
+            try {
+                let result;
+                if (format === 'raw') {
+                    result = await webopenssl.rand({ length, raw: true });
+                    output.textContent = `Raw bytes (${result.length} bytes):\n${Array.from(result).map(b => b.toString(16).padStart(2, '0')).join(' ')}`;
+                } else {
+                    result = await webopenssl.rand({ length, [format]: true });
+                    output.innerHTML = `<strong>${format.toUpperCase()} Output:</strong>\n${result}\n\n<span style="font-size: 11px; color: #666;">Generated ${length} random bytes</span>`;
+                }
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+
+        // Hash computation
+        async function computeHash() {
+            const algorithm = document.getElementById('dgst-algorithm').value;
+            const input = document.getElementById('dgst-input').value;
+            const format = document.querySelector('input[name="dgst-format"]:checked').value;
+            const output = document.getElementById('dgst-output');
+
+            output.className = 'output loading';
+            output.textContent = 'Computing hash...';
+
+            try {
+                const result = await webopenssl.dgst({ 
+                    algorithm, 
+                    input, 
+                    [format]: true 
+                });
+                output.innerHTML = `<strong>${algorithm} (${format.toUpperCase()}):</strong>\n${result}\n\n<span style="font-size: 11px; color: #666;">Input length: ${input.length} characters</span>`;
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+
+        // Encryption mode toggle
+        function toggleEncMode() {
+            const isEncrypt = document.querySelector('input[name="enc-mode"]:checked').value === 'encrypt';
+            const inputLabel = document.getElementById('enc-input-label');
+            const ivGroup = document.getElementById('enc-iv-group');
+            const saltGroup = document.getElementById('enc-salt-group');
+            
+            inputLabel.textContent = isEncrypt ? 'Data to Encrypt:' : 'Data to Decrypt:';
+            ivGroup.style.display = isEncrypt ? 'none' : 'block';
+            saltGroup.style.display = isEncrypt ? 'none' : 'block';
+        }
+
+        // Encryption/Decryption
+        async function performEncryption() {
+            const mode = document.querySelector('input[name="enc-mode"]:checked').value;
+            const algorithm = document.getElementById('enc-algorithm').value;
+            const password = document.getElementById('enc-password').value;
+            const input = document.getElementById('enc-input').value;
+            const format = document.querySelector('input[name="enc-format"]:checked').value;
+            const iv = document.getElementById('enc-iv').value;
+            const salt = document.getElementById('enc-salt').value;
+            const output = document.getElementById('enc-output');
+
+            if (!password) {
+                output.textContent = 'Error: Password is required';
+                output.className = 'output error';
+                return;
+            }
+
+            if (mode === 'decrypt' && (!iv || !salt)) {
+                output.textContent = 'Error: IV and salt required for decryption';
+                output.className = 'output error';
+                return;
+            }
+
+            output.className = 'output loading';
+            output.textContent = mode === 'encrypt' ? 'Encrypting...' : 'Decrypting...';
+
+            try {
+                const options = {
+                    algorithm,
+                    input,
+                    decrypt: mode === 'decrypt',
+                    password,
+                    [format]: true
+                };
+
+                if (mode === 'decrypt') {
+                    options.iv = iv;
+                    options.salt = salt;
+                }
+
+                const result = await webopenssl.enc(options);
+
+                if (mode === 'encrypt') {
+                    output.innerHTML = `<strong>Encryption Result (${algorithm}, ${format.toUpperCase()}):</strong>\n\n` +
+                        `<strong>Data:</strong> ${result.data}\n\n` +
+                        `<strong>IV:</strong> ${result.iv}\n\n` +
+                        `<strong>Salt:</strong> ${result.salt}\n\n` +
+                        `<span style="font-size: 11px; color: #666;">Copy IV and salt for decryption</span>`;
+                } else {
+                    output.innerHTML = `<strong>Decryption Result:</strong>\n\n${result.data}\n\n` +
+                        `<span style="font-size: 11px; color: #666;">Original data recovered</span>`;
+                }
+
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+
+        // CSR Generation
+        async function generateCSR() {
+            const subject = document.getElementById('req-subject').value;
+            const keySize = parseInt(document.getElementById('req-keysize').value);
+            const hashAlgo = document.getElementById('req-hash').value;
+            const includePrivateKey = document.getElementById('req-private-key').checked;
+            const output = document.getElementById('req-output');
+
+            output.className = 'output loading';
+            output.textContent = 'Generating Certificate Signing Request...';
+
+            try {
+                const result = await webopenssl.req({
+                    subject,
+                    keySize,
+                    hashAlgo,
+                    returnPrivateKey: includePrivateKey
+                });
+
+                let outputText = `<strong>Certificate Signing Request (CSR):</strong>\n\n${result.csr}`;
+
+                if (includePrivateKey && result.privateKey) {
+                    outputText += `\n\n<strong>Private Key (KEEP SECURE):</strong>\n\n${result.privateKey}`;
+                }
+
+                outputText += `\n\n<span style="font-size: 11px; color: #666;">Key size: ${keySize} bits, Hash: ${hashAlgo}</span>`;
+
+                output.innerHTML = outputText;
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+
+        // CSR Parsing
+        async function parseCSR() {
+            const csrInput = document.getElementById('parse-csr').value.trim();
+            const output = document.getElementById('parse-output');
+
+            if (!csrInput) {
+                output.textContent = 'Error: Please paste a CSR';
+                output.className = 'output error';
+                return;
+            }
+
+            output.className = 'output loading';
+            output.textContent = 'Parsing CSR...';
+
+            try {
+                const result = await webopenssl.parseCSR(csrInput);
+                
+                let outputText = '<strong>CSR Analysis:</strong>\n\n';
+                outputText += `<strong>Subject:</strong>\n`;
+                result.subject.forEach(attr => {
+                    for (const [key, value] of Object.entries(attr)) {
+                        outputText += `${key}: ${value}\n`;
+                    }
+                });
+                outputText += `\n<strong>Public Key:</strong>\n`;
+                outputText += `Type: ${result.publicKey.type}\n`;
+                if (result.publicKey.n) {
+                    outputText += `Modulus: ${result.publicKey.n.substring(0, 50)}...\n`;
+                }
+                if (result.publicKey.e) {
+                    outputText += `Exponent: ${result.publicKey.e}\n`;
+                }
+                outputText += `\n<strong>Extensions:</strong>\n`;
+                if (result.extensions.length > 0) {
+                    result.extensions.forEach(ext => {
+                        outputText += `${ext.name}: ${ext.value}\n`;
+                    });
+                } else {
+                    outputText += 'No extensions found\n';
+                }
+
+                output.innerHTML = outputText;
+                output.className = 'output success';
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                output.className = 'output error';
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, checking library...');
+            // Delay check slightly to allow script load
+            setTimeout(checkCryptoAvailability, 100);
+            toggleEncMode(); // Set initial encryption mode UI
+        });
+
+        // Auto-resize textareas
+        document.querySelectorAll('textarea').forEach(textarea => {
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+        });
+    </script>
+</body>
+</html>

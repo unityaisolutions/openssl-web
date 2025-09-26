@@ -1,0 +1,11 @@
+*
+!lib/
+!lib/webopenssl.min.js
+!lib/webopenssl.js
+!lib/webopenssl.mjs
+!lib/webopenssl.d.ts
+!demo/
+!demo/index.html
+!src/
+!package.json
+!README.md
