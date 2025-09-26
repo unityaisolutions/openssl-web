@@ -63,18 +63,37 @@ export async function enc(options = {}) {
   // Normalize input
   let data;
   if (typeof input === 'string') {
+    console.log('enc: input type=string, value=', input.substring(0, 50) + '...', 'base64=', base64, 'hex=', hex);
     if (base64) {
-      data = Uint8Array.from(atob(input), c => c.charCodeAt(0));
+      try {
+        const decoded = atob(input);
+        console.log('enc: base64 decoded length=', decoded.length, 'first chars=', decoded.substring(0, 20));
+        data = Uint8Array.from(decoded, c => {
+          if (typeof c !== 'string') {
+            console.error('enc: non-string char in base64 decode, type=', typeof c, 'value=', c);
+            throw new Error('Invalid base64 decoding: non-string character');
+          }
+          return c.charCodeAt(0);
+        });
+      } catch (e) {
+        console.error('enc: base64 decode failed for input=', input.substring(0, 50) + '...', 'error=', e.message);
+        throw new Error(`Base64 decode failed: ${e.message}. Ensure input is valid base64 when base64=true.`);
+      }
     } else if (hex) {
-      data = new Uint8Array(input.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+      const hexMatch = input.match(/.{1,2}/g);
+      if (!hexMatch) throw new Error('Invalid hex input');
+      data = new Uint8Array(hexMatch.map(byte => parseInt(byte, 16)));
     } else {
       data = new TextEncoder().encode(input);
     }
   } else if (input instanceof Uint8Array) {
     data = input;
+    console.log('enc: input type=Uint8Array, length=', data.length);
   } else if (input instanceof ArrayBuffer) {
     data = new Uint8Array(input);
+    console.log('enc: input type=ArrayBuffer, length=', data.length);
   } else {
+    console.error('enc: unsupported input type=', typeof input, 'instanceof=', input instanceof Object ? input.constructor.name : 'n/a');
     throw new Error('Unsupported input type');
   }
 
@@ -86,11 +105,35 @@ export async function enc(options = {}) {
   if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
     try {
       // Generate or parse salt
-      const finalSalt = salt ? 
-        (base64 ? Uint8Array.from(atob(salt), c => c.charCodeAt(0)) : 
-         hex ? new Uint8Array(salt.match(/.{1,2}/g).map(b => parseInt(b, 16))) : 
-         new TextEncoder().encode(salt)) :
-        window.crypto.getRandomValues(new Uint8Array(16));
+      let finalSalt;
+      if (salt) {
+        console.log('enc: salt provided, type=string, value=', salt.substring(0, 50) + '...', 'base64=', base64, 'hex=', hex);
+        if (base64) {
+          try {
+            const decodedSalt = atob(salt);
+            console.log('enc: salt base64 decoded length=', decodedSalt.length);
+            finalSalt = Uint8Array.from(decodedSalt, c => {
+              if (typeof c !== 'string') {
+                console.error('enc: non-string char in salt base64 decode, type=', typeof c, 'value=', c);
+                throw new Error('Invalid base64 salt: non-string character');
+              }
+              return c.charCodeAt(0);
+            });
+          } catch (e) {
+            console.error('enc: salt base64 decode failed, error=', e.message);
+            throw new Error(`Salt base64 decode failed: ${e.message}`);
+          }
+        } else if (hex) {
+          const hexMatch = salt.match(/.{1,2}/g);
+          if (!hexMatch) throw new Error('Invalid hex salt');
+          finalSalt = new Uint8Array(hexMatch.map(b => parseInt(b, 16)));
+        } else {
+          finalSalt = new TextEncoder().encode(salt);
+        }
+      } else {
+        finalSalt = window.crypto.getRandomValues(new Uint8Array(16));
+        console.log('enc: auto-generated salt, length=16');
+      }
 
       // Derive key with PBKDF2
       const keyMaterial = await window.crypto.subtle.importKey(
@@ -117,11 +160,32 @@ export async function enc(options = {}) {
       // Generate or parse IV
       let finalIV;
       if (iv) {
-        finalIV = base64 ? Uint8Array.from(atob(iv), c => c.charCodeAt(0)) :
-                  hex ? new Uint8Array(iv.match(/.{1,2}/g).map(b => parseInt(b, 16))) :
-                  new TextEncoder().encode(iv);
+        console.log('enc: iv provided, type=string, value=', iv.substring(0, 50) + '...', 'base64=', base64, 'hex=', hex);
+        if (base64) {
+          try {
+            const decodedIV = atob(iv);
+            console.log('enc: iv base64 decoded length=', decodedIV.length);
+            finalIV = Uint8Array.from(decodedIV, c => {
+              if (typeof c !== 'string') {
+                console.error('enc: non-string char in iv base64 decode, type=', typeof c, 'value=', c);
+                throw new Error('Invalid base64 IV: non-string character');
+              }
+              return c.charCodeAt(0);
+            });
+          } catch (e) {
+            console.error('enc: iv base64 decode failed, error=', e.message);
+            throw new Error(`IV base64 decode failed: ${e.message}`);
+          }
+        } else if (hex) {
+          const hexMatch = iv.match(/.{1,2}/g);
+          if (!hexMatch) throw new Error('Invalid hex IV');
+          finalIV = new Uint8Array(hexMatch.map(b => parseInt(b, 16)));
+        } else {
+          finalIV = new TextEncoder().encode(iv);
+        }
       } else {
         finalIV = window.crypto.getRandomValues(new Uint8Array(16));
+        console.log('enc: auto-generated IV, length=16');
       }
 
       let result;
