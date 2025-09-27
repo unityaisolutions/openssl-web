@@ -251,7 +251,27 @@ async function cryptoJSEncrypt(data, algorithm, password, salt, iv, iterations, 
   if (mode === 'GCM') cryptoJSMode = CryptoJS.mode.GCM;
   else if (mode === 'CTR') cryptoJSMode = CryptoJS.mode.CTR;
 
-  const key = CryptoJS.PBKDF2(password, salt || CryptoJS.lib.WordArray.random(16), {
+  // Handle salt properly
+  let finalSalt;
+  if (salt) {
+    if (salt instanceof Uint8Array) {
+      finalSalt = CryptoJS.lib.WordArray.create(salt);
+    } else if (typeof salt === 'string') {
+      if (base64) {
+        finalSalt = CryptoJS.enc.Base64.parse(salt);
+      } else if (hex) {
+        finalSalt = CryptoJS.enc.Hex.parse(salt);
+      } else {
+        finalSalt = CryptoJS.enc.Utf8.parse(salt);
+      }
+    } else {
+      finalSalt = CryptoJS.lib.WordArray.random(16);
+    }
+  } else {
+    finalSalt = CryptoJS.lib.WordArray.random(16);
+  }
+
+  const key = CryptoJS.PBKDF2(password, finalSalt, {
     keySize,
     iterations: iterations || 10000,
     hasher: CryptoJS.algo.SHA256
@@ -259,47 +279,74 @@ async function cryptoJSEncrypt(data, algorithm, password, salt, iv, iterations, 
 
   let result;
   if (decrypt) {
-    const ivBytes = iv ? 
-      (base64 ? CryptoJS.enc.Base64.parse(iv) : 
-       hex ? CryptoJS.enc.Hex.parse(iv) : 
-       CryptoJS.enc.Utf8.parse(iv)) : 
+    // For decrypt, data is ciphertext - must be in specified format (string)
+    let ciphertext;
+    if (base64) {
+      ciphertext = CryptoJS.enc.Base64.parse(data);
+    } else if (hex) {
+      ciphertext = CryptoJS.enc.Hex.parse(data);
+    } else {
+      // Default to base64 for binary ciphertext
+      ciphertext = CryptoJS.enc.Base64.parse(data);
+    }
+
+    const ivBytes = iv ?
+      (base64 ? CryptoJS.enc.Base64.parse(iv) :
+       hex ? CryptoJS.enc.Hex.parse(iv) :
+       CryptoJS.enc.Utf8.parse(iv)) :
       CryptoJS.lib.WordArray.random(16);
 
     result = CryptoJS.AES.decrypt(
-      { ciphertext: CryptoJS.enc.Base64.parse(base64 ? data : hex ? CryptoJS.enc.Hex.parse(data) : data) },
+      { ciphertext },
       key,
       { iv: ivBytes, mode: cryptoJSMode }
     );
   } else {
-    const ivBytes = iv ? 
-      (base64 ? CryptoJS.enc.Base64.parse(iv) : 
-       hex ? CryptoJS.enc.Hex.parse(iv) : 
-       CryptoJS.enc.Utf8.parse(iv)) : 
+    // For encrypt, data is plaintext - convert Uint8Array to WordArray or parse formatted
+    let plaintext;
+    if (data instanceof Uint8Array) {
+      plaintext = CryptoJS.lib.WordArray.create(data);
+    } else if (base64) {
+      plaintext = CryptoJS.enc.Base64.parse(data);
+    } else if (hex) {
+      plaintext = CryptoJS.enc.Hex.parse(data);
+    } else {
+      plaintext = CryptoJS.enc.Utf8.parse(data);
+    }
+
+    const ivBytes = iv ?
+      (base64 ? CryptoJS.enc.Base64.parse(iv) :
+       hex ? CryptoJS.enc.Hex.parse(iv) :
+       CryptoJS.enc.Utf8.parse(iv)) :
       CryptoJS.lib.WordArray.random(16);
 
     result = CryptoJS.AES.encrypt(
-      base64 ? CryptoJS.enc.Base64.parse(data) : 
-      hex ? CryptoJS.enc.Hex.parse(data) : 
-      CryptoJS.enc.Utf8.parse(data),
+      plaintext,
       key,
       { iv: ivBytes, mode: cryptoJSMode }
     );
   }
 
   if (raw) {
-    return { 
-      data: new Uint8Array(result.sigBytes),
-      iv: new Uint8Array(ivBytes.sigBytes)
+    const outputData = result.ciphertext || WordArray.create(result.words, result.sigBytes);
+    return {
+      data: new Uint8Array(outputData.sigBytes),
+      iv: new Uint8Array(ivBytes.sigBytes),
+      ...(salt && { salt: new Uint8Array(finalSalt.sigBytes) })
     };
   }
 
-  const output = decrypt ? 
-    result.toString(CryptoJS.enc.Utf8) : 
+  const output = decrypt ?
+    result.toString(CryptoJS.enc.Utf8) :
     result.toString(base64 ? CryptoJS.enc.Base64 : hex ? CryptoJS.enc.Hex : CryptoJS.enc.Utf8);
 
-  return { 
+  const ivOutput = ivBytes.toString(base64 ? CryptoJS.enc.Base64 : hex ? CryptoJS.enc.Hex : CryptoJS.enc.Utf8);
+  const saltOutput = salt ? finalSalt.toString(base64 ? CryptoJS.enc.Base64 : hex ? CryptoJS.enc.Hex : CryptoJS.enc.Utf8) : undefined;
+
+  return {
     data: output,
-    iv: ivBytes.toString(base64 ? CryptoJS.enc.Base64 : hex ? CryptoJS.enc.Hex : CryptoJS.enc.Utf8)
+    iv: ivOutput,
+    ...(saltOutput && { salt: saltOutput })
   };
 }
 
