@@ -328,7 +328,14 @@ async function cryptoJSEncrypt(data, algorithm, password, salt, iv, iterations, 
   }
 
   if (raw) {
-    const outputData = result.ciphertext || WordArray.create(result.words, result.sigBytes);
+    let outputData;
+    if (decrypt) {
+      // For decrypt raw, convert UTF-8 string result to bytes
+      outputData = CryptoJS.enc.Utf8.parse(result.toString(CryptoJS.enc.Utf8));
+    } else {
+      // For encrypt raw, use ciphertext WordArray
+      outputData = result.ciphertext;
+    }
     return {
       data: new Uint8Array(outputData.sigBytes),
       iv: new Uint8Array(ivBytes.sigBytes),
